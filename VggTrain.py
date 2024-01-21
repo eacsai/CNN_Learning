@@ -155,7 +155,7 @@ def train_model_process(model, train_dataloader, val_dataloader, num_epochs):
             val_num += x.size(0)
 
         mean_valid_loss_record = val_loss / val_num
-        mean_valid_acc_record = val_corrects.double().item() / train_num
+        mean_valid_acc_record = val_corrects.double().item() / val_num
         writer.add_scalar('val_loss', mean_valid_loss_record, step)
         writer.add_scalar('val_accuracy', mean_valid_acc_record, step)
 
@@ -183,7 +183,7 @@ def train_model_process(model, train_dataloader, val_dataloader, num_epochs):
         time_use = time.time() - since
         print("训练和验证耗费的时间{:.0f}m{:.0f}s".format(time_use // 60, time_use % 60))
 
-    torch.save(best_model_wts, "./LeNet/best_model.pth")
+    torch.save(best_model_wts, "./Vgg/best_model.pth")
 
 
 if __name__ == '__main__':
@@ -191,10 +191,8 @@ if __name__ == '__main__':
     conv_arch = ((1, 64), (1, 128), (2, 256), (2, 512), (2, 512))  # 定义vgg卷积块结构
     ratio = 4
     small_conv_arch = [(pair[0], pair[1] // ratio) for pair in conv_arch]
-
-    print('small_conv_arch', small_conv_arch)
     VggNet = Vgg(small_conv_arch)
     # 加载数据集
     train_data, val_data = train_val_data_process()
     # 利用现有的模型进行模型的训练
-    train_model_process(VggNet, train_data, val_data, num_epochs=10)
+    train_model_process(VggNet, train_data, val_data, num_epochs=4)
