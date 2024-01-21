@@ -7,18 +7,12 @@ class LeNet(nn.Module):
     def __init__(self):
         super(LeNet, self).__init__()
         self.layer = nn.Sequential(
-            nn.Conv2d(1, 6, kernel_size=5, padding=2),
-            nn.Sigmoid(),
-            nn.AvgPool2d(2, 2),
-            nn.Conv2d(6, 16, 5),
-            nn.Sigmoid(),
-            nn.AvgPool2d(2, 2),
-
-            nn.Flatten(),
-            nn.Linear(16 * 5 * 5, 120),
-            nn.Sigmoid(),
-            nn.Linear(120, 84),
-            nn.Sigmoid(),
+            nn.Conv2d(1, 6, kernel_size=5), nn.BatchNorm2d(6), nn.Sigmoid(),
+            nn.AvgPool2d(kernel_size=2, stride=2),
+            nn.Conv2d(6, 16, kernel_size=5), nn.BatchNorm2d(16), nn.Sigmoid(),
+            nn.AvgPool2d(kernel_size=2, stride=2), nn.Flatten(),
+            nn.Linear(256, 120), nn.BatchNorm1d(120), nn.Sigmoid(),
+            nn.Linear(120, 84), nn.BatchNorm1d(84), nn.Sigmoid(),
             nn.Linear(84, 10)
         )
 
@@ -97,10 +91,73 @@ class Vgg(nn.Module):
         return x
 
 
+class Inception(nn.Module):
+    def __init__(self, in_channels, c1, c2, c3, c4):
+        super(Inception, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels, c1, kernel_size=1)
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(in_channels, c2[0], kernel_size=1), nn.ReLU(),
+            nn.Conv2d(c2[0], c2[1], kernel_size=3, padding=1), nn.ReLU()
+        )
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(in_channels, c3[0], kernel_size=1), nn.ReLU(),
+            nn.Conv2d(c3[0], c3[1], kernel_size=5, padding=2), nn.ReLU()
+        )
+        self.conv4 = nn.Sequential(
+            nn.MaxPool2d(kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(in_channels, c4, kernel_size=1), nn.ReLU(),
+        )
+
+    def forward(self, X):
+        return torch.cat(
+            (
+                self.conv1(X),
+                self.conv2(X),
+                self.conv3(X),
+                self.conv4(X),
+            ),
+            dim=1
+        )
+
+
+class GoogleNet(nn.Module):
+    def __init__(self, in_channels, classes):
+        super(GoogleNet, self).__init__()
+        self.layers = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels=64, kernel_size=7, stride=2, padding=3), nn.ReLU(),
+            nn.MaxPool2d(kernel_size=3, stride=2),
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=1), nn.ReLU(),
+            nn.Conv2d(in_channels=64, out_channels=192, kernel_size=3, padding=1), nn.ReLU(),
+            nn.MaxPool2d(kernel_size=3, stride=2),
+            Inception(192, c1=64, c2=[96, 128], c3=[16, 32], c4=32),
+            Inception(256, c1=128, c2=[128, 192], c3=[32, 96], c4=64),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+            Inception(480, c1=192, c2=[96, 208], c3=[16, 48], c4=64),
+            Inception(512, c1=160, c2=[112, 224], c3=[24, 64], c4=64),
+            Inception(512, c1=128, c2=[128, 256], c3=[24, 64], c4=64),
+            Inception(512, c1=112, c2=[144, 288], c3=[32, 64], c4=64),
+            Inception(528, c1=256, c2=[160, 320], c3=[32, 128], c4=128),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+            Inception(832, c1=256, c2=[160, 320], c3=[32, 128], c4=128),
+            Inception(832, c1=384, c2=[192, 384], c3=[48, 128], c4=128),
+            nn.AvgPool2d(kernel_size=7, stride=1),
+            nn.Dropout(p=0.4),
+            nn.Flatten(),
+            nn.Linear(1024, classes),
+            nn.Softmax(dim=1)
+        )
+
+    def forward(self, x):
+        x = self.layers(x)
+        return x
+
+
 if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     le_net = LeNet().to(device)
     alex_net = AlexNet().to(device)
+    google_net = GoogleNet(1, 1000).to(device)
 
     # print(summary(le_net, (1, 28, 28)))
     # print(summary(alex_net, (1, 224, 224)))
+    print(summary(google_net, (1, 224, 224)))
