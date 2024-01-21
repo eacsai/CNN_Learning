@@ -9,13 +9,19 @@ import torch.utils.data as Data
 from tqdm import tqdm
 
 from model import LeNet
+from model import AlexNet
 import torch.nn as nn
 
-
 def train_val_data_process():
+    # LeNet模型要求输入图片的大小
+    LeNetImgSize = transforms.Resize(size=28)
+
+    # AlexNet模型要求输入图片的大小
+    AlexNetImgSize = transforms.Resize(size=224)
+
     train_data = FashionMNIST(root='./data',
                               train=True,
-                              transform=transforms.Compose([transforms.Resize(size=28), transforms.ToTensor()]),
+                              transform=transforms.Compose([AlexNetImgSize, transforms.ToTensor()]),
                               download=True)
 
     train_data, val_data = Data.random_split(train_data, [round(0.8*len(train_data)), round(0.2*len(train_data))])
@@ -36,7 +42,14 @@ def train_model_process(model, train_dataloader, val_dataloader, num_epochs):
     # 设定训练所用到的设备，有GPU用GPU没有GPU用CPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    writer = SummaryWriter("./logs_dnn")
+    def init_weights(m):
+        if type(m) == nn.Linear or type(m) == nn.Conv2d:
+            nn.init.xavier_uniform_(m.weight)
+
+    model.apply(init_weights)
+
+    print('training on', device)
+    writer = SummaryWriter("./logs_LesNet")
 
     # 使用Adam优化器，学习率为0.001
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
@@ -170,7 +183,8 @@ def train_model_process(model, train_dataloader, val_dataloader, num_epochs):
 if __name__ == '__main__':
     # 加载需要的模型
     LeNet = LeNet()
+    AlexNet = AlexNet()
     # 加载数据集
     train_data, val_data = train_val_data_process()
     # 利用现有的模型进行模型的训练
-    train_model_process(LeNet, train_data, val_data, num_epochs=20)
+    train_model_process(AlexNet, train_data, val_data, num_epochs=20)
