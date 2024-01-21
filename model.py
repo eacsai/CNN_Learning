@@ -61,9 +61,46 @@ class AlexNet(nn.Module):
         return x
 
 
+class Vgg(nn.Module):
+    def __init__(self, conv_arch):
+        super(Vgg, self).__init__()
+        conv_blks = []
+        in_channels = 1
+
+        # 定义一个vgg块
+        def vgg_block(vgg_num_convs, vgg_in_channels, vgg_out_channels):
+            layers = []
+            for _ in range(vgg_num_convs):
+                layers.append(nn.Conv2d(vgg_in_channels, vgg_out_channels,
+                                        kernel_size=3, padding=1))
+                layers.append(nn.ReLU())
+                vgg_in_channels = vgg_out_channels
+            layers.append(nn.MaxPool2d(kernel_size=2, stride=2))
+            return nn.Sequential(*layers)
+
+        # 卷积层部分
+        for (num_convs, out_channels) in conv_arch:
+            conv_blks.append(vgg_block(num_convs, in_channels, out_channels))
+            in_channels = out_channels
+
+        self.layers = nn.Sequential(
+            *conv_blks,
+            nn.Flatten(),
+            # 全连接层部分
+            nn.Linear(out_channels * 7 * 7, 4096), nn.ReLU(), nn.Dropout(0.5),
+            nn.Linear(4096, 4096), nn.ReLU(), nn.Dropout(0.5),
+            nn.Linear(4096, 10)
+        )
+
+    def forward(self, x):
+        x = self.layers(x)
+        return x
+
+
 if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     le_net = LeNet().to(device)
     alex_net = AlexNet().to(device)
-    print(summary(le_net, (1, 28, 28)))
-    print(summary(alex_net, (1, 224, 224)))
+
+    # print(summary(le_net, (1, 28, 28)))
+    # print(summary(alex_net, (1, 224, 224)))
