@@ -2,8 +2,7 @@ import torch
 import torch.utils.data as Data
 from torchvision import transforms
 from torchvision.datasets import FashionMNIST
-from model import LeNet
-
+from model import LeNet, AlexNet
 
 
 def test_data_process():
@@ -57,8 +56,8 @@ def test_model_process(model, test_dataloader):
 
 if __name__=="__main__":
     # 加载模型
-    model = LeNet()
-    model.load_state_dict(torch.load('./LeNet/best_model.pth'))
+    model = AlexNet()
+    model.load_state_dict(torch.load('./AlexNet/best_model.pth'))
     # 加载测试数据
     test_dataloader = test_data_process()
     # 加载模型测试的函数
